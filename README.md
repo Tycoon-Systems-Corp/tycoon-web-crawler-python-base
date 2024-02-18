@@ -9,7 +9,7 @@
 ## Execution
 ```python
 python3 tycoon_scrapper.py https://www.fashionnova.com
-
+```
 
 ##TODO:
 
