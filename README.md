@@ -11,7 +11,7 @@
 python3 tycoon_scrapper.py https://www.fashionnova.com
 ```
 
-##TODO:
+## TODO:
 
 - Save data in Postgres. Maybe save S3 as well
 
