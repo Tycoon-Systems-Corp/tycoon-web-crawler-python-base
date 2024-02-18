@@ -2,15 +2,16 @@
 
 ## Installation
 
-create virtual environment
-activate virtual environment
-pip install -r requirements.txt
-example execution 
+- create virtual environment
+- activate virtual environment
+- pip install -r requirements.txt
+
+## Execution
 ```python
 python3 tycoon_scrapper.py https://www.fashionnova.com
 
 
-TODO:
+##TODO:
 
-Save data in Postgres. Maybe save S3 as well
+- Save data in Postgres. Maybe save S3 as well
 
