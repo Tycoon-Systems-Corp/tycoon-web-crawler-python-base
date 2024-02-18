@@ -7,7 +7,7 @@ import csv
 import ssl
 
 class MySpider(scrapy.Spider):
-    name = 'TycoonnSpider'
+    name = 'TycoonSpider'
 
     def __init__(self, url):
         self.start_urls = [url]
