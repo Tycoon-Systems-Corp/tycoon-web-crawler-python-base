@@ -1,12 +1,9 @@
 import scrapy
-from scrapy.crawler import CrawlerProcess
 from urllib.parse import urlparse, urljoin
 from urllib import robotparser
-import sys
-import csv
 import ssl
 
-class MySpider(scrapy.Spider):
+class TycoonSpider(scrapy.Spider):
     name = 'TycoonSpider'
 
     def __init__(self, url):
@@ -46,9 +43,23 @@ class MySpider(scrapy.Spider):
 
     def extract_data(self, response):
         # Extracting data from the page
+        meta_tags = {}
+        og_tags = {}
+        for tag in response.css('meta'):
+            name = tag.xpath('@name').get()
+            content = tag.xpath('@content').get()
+            property_ = tag.xpath('@property').get()
+            if name:
+                meta_tags[name] = content
+            if property_:
+                og_tags[property_] = content
         return {
             'title': response.css('title::text').get(),
             'url': response.url,
+            'paragraphs': response.css('p::text').getall(),
+            'headings': response.css('h1::text, h2::text, h3::text').getall(),
+            'meta_tags': meta_tags,
+            'og_tags': og_tags,
             # Add more fields as needed
         }
 
@@ -63,30 +74,3 @@ class MySpider(scrapy.Spider):
             return True
         # Add more conditions as needed
         return False
-
-if __name__ == "__main__":
-    # Check if URL argument is provided
-    if len(sys.argv) != 2:
-        print("Usage: python script.py <URL>")
-        sys.exit(1)
-    # Validate provided URL
-    provided_url = sys.argv[1]
-    if not provided_url.startswith(("http://", "https://")):
-        print("Invalid URL provided. Please provide a valid URL starting with 'http://' or 'https://'")
-        sys.exit(1)
-
-    # Disable SSL certificate verification
-    ssl._create_default_https_context = ssl._create_unverified_context
-
-    # Start the crawler process
-    process = CrawlerProcess(settings={
-        'FEEDS': {
-             'output.json': {
-                'format': 'json',
-                'overwrite': True,
-            },
-        },
-        'CONCURRENT_REQUESTS': 32,  # Adjust the number of concurrent requests as needed
-    })
-    process.crawl(MySpider, url=provided_url)
-    process.start()
