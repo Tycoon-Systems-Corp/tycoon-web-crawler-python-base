@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package scraper;
+
+// Service for simple messaging outside of service
+service Message {
+    rpc Send(Request) returns (Response);
+}
+
+// Request for sending messages
+message Request {
+    string topic = 1;
+    string content = 2;
+    string sender = 3;
+    string time = 4;
+    string match = 5;
+}
+
+// Response for receiving via server
+message Response {
+    string topic = 1;
+    string content = 2;
+    bool success = 3;
+    string source = 4;
+    string time = 5;
+}
