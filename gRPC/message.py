@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def send_message(topic, content, sender, time, match):
     # Create gRPC channel by connecting to external server. Should be either URL or host:port. Use secure for secure connection. usually gRPC we just use insecure
     channel = grpc.insecure_channel(os.getenv("ROUTING_SERVER"))
@@ -14,17 +15,14 @@ def send_message(topic, content, sender, time, match):
 
     # Generate request
     request = scraper_pb2.Request(
-        topic=topic,
-        content=content,
-        sender=sender,
-        time=time,
-        match=match
+        topic=topic, content=content, sender=sender, time=time, match=match
     )
 
     # Call method to send
     response = stub.Send(request)
 
-    print('Message Sent', response.success)
+    print("Message Sent", response.success)
+
 
 # Example Send. Uncomment if you have configured ROUTING_SERVER as env variable connecting to Routing Server
 # if __name__ == '__main__':

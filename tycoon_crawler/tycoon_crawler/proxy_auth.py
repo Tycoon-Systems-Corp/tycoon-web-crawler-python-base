@@ -1,5 +1,6 @@
 import base64
 
+
 class ProxyMiddleware(object):
 
     @classmethod
@@ -14,8 +15,10 @@ class ProxyMiddleware(object):
 
     def process_request(self, request, spider):
 
-        user_credentials = '{user}:{passw}'.format(user=self.user, passw=self.password)
-        basic_authentication = 'Basic ' + base64.b64encode(user_credentials.encode()).decode()
-        host = 'http://{endpoint}:{port}'.format(endpoint=self.endpoint, port=self.port)
-        request.meta['proxy'] = host
-        request.headers['Proxy-Authorization'] = basic_authentication
+        user_credentials = "{user}:{passw}".format(user=self.user, passw=self.password)
+        basic_authentication = (
+            "Basic " + base64.b64encode(user_credentials.encode()).decode()
+        )
+        host = "http://{endpoint}:{port}".format(endpoint=self.endpoint, port=self.port)
+        request.meta["proxy"] = host
+        request.headers["Proxy-Authorization"] = basic_authentication

@@ -6,8 +6,7 @@ import scraper_pb2 as scraper__pb2
 
 
 class MessageStub(object):
-    """Service for simple messaging outside of service
-    """
+    """Service for simple messaging outside of service"""
 
     def __init__(self, channel):
         """Constructor.
@@ -16,54 +15,65 @@ class MessageStub(object):
             channel: A grpc.Channel.
         """
         self.Send = channel.unary_unary(
-                '/scraper.Message/Send',
-                request_serializer=scraper__pb2.Request.SerializeToString,
-                response_deserializer=scraper__pb2.Response.FromString,
-                )
+            "/scraper.Message/Send",
+            request_serializer=scraper__pb2.Request.SerializeToString,
+            response_deserializer=scraper__pb2.Response.FromString,
+        )
 
 
 class MessageServicer(object):
-    """Service for simple messaging outside of service
-    """
+    """Service for simple messaging outside of service"""
 
     def Send(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
 
 def add_MessageServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Send': grpc.unary_unary_rpc_method_handler(
-                    servicer.Send,
-                    request_deserializer=scraper__pb2.Request.FromString,
-                    response_serializer=scraper__pb2.Response.SerializeToString,
-            ),
+        "Send": grpc.unary_unary_rpc_method_handler(
+            servicer.Send,
+            request_deserializer=scraper__pb2.Request.FromString,
+            response_serializer=scraper__pb2.Response.SerializeToString,
+        ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'scraper.Message', rpc_method_handlers)
+        "scraper.Message", rpc_method_handlers
+    )
     server.add_generic_rpc_handlers((generic_handler,))
 
 
- # This class is part of an EXPERIMENTAL API.
+# This class is part of an EXPERIMENTAL API.
 class Message(object):
-    """Service for simple messaging outside of service
-    """
+    """Service for simple messaging outside of service"""
 
     @staticmethod
-    def Send(request,
+    def Send(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/scraper.Message/Send',
+            "/scraper.Message/Send",
             scraper__pb2.Request.SerializeToString,
             scraper__pb2.Response.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
