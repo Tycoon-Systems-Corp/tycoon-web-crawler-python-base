@@ -16,8 +16,8 @@
 - copy and create .env file from .env.example and set creds value
 
 ## TODO:
+- Extract products and price
 
-- Save data in Postgres. Maybe save S3 as well
 
 ## Execution
 ```
