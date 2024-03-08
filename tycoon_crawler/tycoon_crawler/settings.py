@@ -112,17 +112,17 @@ FEEDS = {
 # Adjust the number of concurrent requests
 CONCURRENT_REQUESTS = 32
 
-#Proxy settings
+# Proxy settings
 
 DOWNLOADER_MIDDLEWARES = {
-    'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': 110,
-    'tycoon_crawler.proxy_auth.ProxyMiddleware': 100,
+    "scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware": 110,
+    "tycoon_crawler.proxy_auth.ProxyMiddleware": 100,
 }
 
-PROXY_USER =  os.getenv("PROXY_USER")
-PROXY_PASSWORD  = os.getenv("PROXY_PASSWORD") 
-PROXY_ENDPOINT = os.getenv("PROXY_ENDPOINT") ## Endpoint you'd like to use
-PROXY_PORT = os.getenv("PROXY_PORT") ## Port of the endpoint you are using.
+PROXY_USER = os.getenv("PROXY_USER")
+PROXY_PASSWORD = os.getenv("PROXY_PASSWORD")
+PROXY_ENDPOINT = os.getenv("PROXY_ENDPOINT")  ## Endpoint you'd like to use
+PROXY_PORT = os.getenv("PROXY_PORT")  ## Port of the endpoint you are using.
 
 
 # settings.py

@@ -8,10 +8,10 @@ class ProxyMiddleware(object):
         return cls(crawler.settings)
 
     def __init__(self, settings):
-        self.user = settings.get('PROXY_USER')
-        self.password = settings.get('PROXY_PASSWORD')
-        self.endpoint = settings.get('PROXY_ENDPOINT')
-        self.port = settings.get('PROXY_PORT')
+        self.user = settings.get("PROXY_USER")
+        self.password = settings.get("PROXY_PASSWORD")
+        self.endpoint = settings.get("PROXY_ENDPOINT")
+        self.port = settings.get("PROXY_PORT")
 
     def process_request(self, request, spider):
 
