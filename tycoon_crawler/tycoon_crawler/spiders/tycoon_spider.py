@@ -91,12 +91,15 @@ class TycoonSpider(scrapy.Spider):
         self.visited_urls.add(response.url)
         yield extracted_data
 
+        print("View Response", response)
+
         # Extracting links to other pages
         for link in response.css("a::attr(href)").getall():
             absolute_url = urljoin(response.url, link)
             if absolute_url.startswith("javascript:"):
                 continue  # Ignore JavaScript links
             if absolute_url not in self.visited_urls:
+                print("Run Req", absolute_url)
                 yield scrapy.Request(
                     url=absolute_url, callback=self.parse, errback=self.error_handler
                 )
