@@ -18,9 +18,10 @@ load_dotenv()
 Base = declarative_base()
 
 
-class Domain(Base):
+class Url(Base):
     __tablename__ = "urls"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    raw = Column(String)
     domain = Column(String)
     lastScrape = Column(DateTime(timezone=True), default=datetime.now)
     product = Column(JSON)
@@ -70,7 +71,12 @@ class TycoonSpider(scrapy.Spider):
                 break
 
             # Insert the URL into the database
-            self.insert_url(url)
+            good_domain = self.insert_url(url)
+            if not good_domain:
+                self.logger.error(
+                    f"URL {url} Could not extract good domain from url"
+                )
+                break
 
             yield scrapy.Request(
                 url=url, callback=self.parse, errback=self.error_handler
@@ -144,20 +150,41 @@ class TycoonSpider(scrapy.Spider):
         three_months_ago_date = datetime.now().date() - timedelta(days=3 * 30)
 
         # Check if the URL domain exists in the database and was last scraped over 3 months ago
-        query = self.session.query(Domain).filter(
-            Domain.domain == url, func.date(Domain.lastScrape) >= three_months_ago_date
+        query = self.session.query(Url).filter(
+            Url.domain == url, func.date(Url.lastScrape) >= three_months_ago_date
         )
         return self.session.query(query.exists()).scalar()
 
-    def insert_url(self, url):
+    def insert_url(self, url, extracted_data=None):
         # Insert a new URL into the database
-        new_domain = Domain(domain=url, lastScrape=datetime.now())
-        self.session.add(new_domain)
-        self.session.commit()
+        pattern = r"(?::\/\/)?([a-zA-Z0-9.-]+?)(?:\/|$)"
+        match = re.search(pattern, url, re.IGNORECASE)
+        print("Match", match, "Url", url)
+        if match:
+            use_domain = match.group(1)
+            print("Domain", use_domain)
+            new_url_kwargs = {
+                'domain': use_domain,
+                'raw': url,
+                'lastScrape': datetime.now()
+            }
+            if extracted_data is not None:
+                new_url_kwargs['meta'] = extracted_data
+            print("New Url", new_url_kwargs)
+            new_url = Url(**new_url_kwargs)
+            self.session.add(new_url)
+            self.session.commit()
+            return True
+        else:
+            return False
 
     def update_meta(self, url, extracted_data):
         # Update meta for a given URL in the database
-        domain = self.session.query(Domain).filter(Domain.domain == url).first()
-        if domain:
-            domain.meta = extracted_data
+        print("Updating Meta", url)
+        urlRec = self.session.query(Url).filter(Url.raw == url).first()
+        if urlRec:
+            urlRec.meta = extracted_data
             self.session.commit()
+        else:
+            print("No Match Add New", url)
+            self.insert_url(url, extracted_data)
