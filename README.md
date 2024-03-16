@@ -13,6 +13,8 @@ This Scraper will only work on Linux/MacOS since it uses Playwright so if you wo
 
 - activate virtual environment
     source ./scraper/Scripts/activate
+    or
+    source ./scraper/bin/activate
 
 - Install all Requirements
 pip install -r requirements.txt

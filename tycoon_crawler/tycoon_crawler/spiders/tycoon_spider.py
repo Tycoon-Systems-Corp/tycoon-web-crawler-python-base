@@ -83,6 +83,7 @@ class TycoonSpider(scrapy.Spider):
             )
 
     def parse(self, response):
+        print("Start Parse")
         # Check if the page is a log-in or authentication page
         if self.is_login_page(response):
             self.logger.info(f"Ignoring log-in page: {response.url}")
