@@ -1,6 +1,9 @@
 ## Python script for web scraping
 
 ## Installation
+- Install requirements
+pip install -r requirements.txt
+
 - create virtual environment
     pip install virtualenv
 

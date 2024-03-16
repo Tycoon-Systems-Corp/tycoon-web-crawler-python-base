@@ -79,7 +79,7 @@ class TycoonSpider(scrapy.Spider):
                 break
 
             yield scrapy.Request(
-                url=url, callback=self.parse, errback=self.error_handler
+                url=url, callback=self.parse, errback=self.error_handler, meta={"playwright": True}
             )
 
     def parse(self, response):
@@ -88,12 +88,15 @@ class TycoonSpider(scrapy.Spider):
             self.logger.info(f"Ignoring log-in page: {response.url}")
             return
 
+        print("Extracting")
         # Extract data from the current page
         extracted_data = self.extract_data(response)
 
+        print("Update Meta")
         # Insert the entire response into the database
         self.update_meta(response.url, extracted_data)
 
+        print("Adding Url", response.url)
         self.visited_urls.add(response.url)
         yield extracted_data
 
@@ -106,8 +109,9 @@ class TycoonSpider(scrapy.Spider):
                 continue  # Ignore JavaScript links
             if absolute_url not in self.visited_urls:
                 print("Run Req", absolute_url)
+                self.visited_urls.add(absolute_url) # Avoid re-scrape now that we're running request for this link
                 yield scrapy.Request(
-                    url=absolute_url, callback=self.parse, errback=self.error_handler
+                    url=absolute_url, callback=self.parse, errback=self.error_handler, meta={"playwright": True}
                 )
 
     def extract_data(self, response):

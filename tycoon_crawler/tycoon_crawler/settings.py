@@ -18,6 +18,14 @@ BOT_NAME = "tycoon_crawler"
 SPIDER_MODULES = ["tycoon_crawler.spiders"]
 NEWSPIDER_MODULE = "tycoon_crawler.spiders"
 
+# Support for: Scrapy Playwright
+DOWNLOAD_HANDLERS = {
+    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+}
+
+# Supports Playwright
+TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 # USER_AGENT = "tycoon_crawler (+http://www.yourdomain.com)"
