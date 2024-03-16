@@ -27,6 +27,10 @@ DOWNLOAD_HANDLERS = {
 # Supports Playwright
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
+# Playwright Browser
+PLAYWRIGHT_BROWSER_TYPE = "chromium"
+
+
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 # USER_AGENT = "tycoon_crawler (+http://www.yourdomain.com)"
 
