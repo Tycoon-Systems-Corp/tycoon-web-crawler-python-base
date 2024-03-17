@@ -11,6 +11,21 @@ import os
 import ssl
 from dotenv import load_dotenv
 
+# Try Selenium
+from shutil import which
+
+DOWNLOADER_MIDDLEWARES = {
+    "scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware": 110,
+    "tycoon_crawler.proxy_auth.ProxyMiddleware": 100,
+    'scrapy_selenium.SeleniumMiddleware': 800 # Selenium
+}
+
+# Selenium
+SELENIUM_DRIVER_NAME = 'firefox'
+SELENIUM_DRIVER_EXECUTABLE_PATH = which('geckodriver')
+SELENIUM_DRIVER_ARGUMENTS=['-headless']
+
+
 load_dotenv()
 
 BOT_NAME = "tycoon_crawler"
@@ -18,17 +33,29 @@ BOT_NAME = "tycoon_crawler"
 SPIDER_MODULES = ["tycoon_crawler.spiders"]
 NEWSPIDER_MODULE = "tycoon_crawler.spiders"
 
-# Support for: Scrapy Playwright
-DOWNLOAD_HANDLERS = {
-    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-}
+# # Support for: Scrapy Playwright
+# DOWNLOAD_HANDLERS = {
+#     "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+#     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+# }
 
-# Supports Playwright
-TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
+# # Supports Playwright
+# TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
-# Playwright Browser
-PLAYWRIGHT_BROWSER_TYPE = "chromium"
+# # Playwright Browser
+# PLAYWRIGHT_BROWSER_TYPE = "chromium"
+
+# # Headless
+# PLAYWRIGHT_HEADLESS = True
+
+# CONCURRENT_REQUESTS = 30
+# ...
+# # Playwright settings
+# PLAYWRIGHT_CONTEXT_ARGS = {'ignore_https_errors':True}
+# PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30000
+# ...
+# RETRY_ENABLED = True
+# RETRY_TIMES = 3
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -125,11 +152,6 @@ FEEDS = {
 CONCURRENT_REQUESTS = 32
 
 # Proxy settings
-
-DOWNLOADER_MIDDLEWARES = {
-    "scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware": 110,
-    "tycoon_crawler.proxy_auth.ProxyMiddleware": 100,
-}
 
 PROXY_USER = os.getenv("PROXY_USER")
 PROXY_PASSWORD = os.getenv("PROXY_PASSWORD")

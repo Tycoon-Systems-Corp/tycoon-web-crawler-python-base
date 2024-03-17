@@ -13,6 +13,8 @@ from sqlalchemy import func, DateTime
 import re
 import json
 
+from scrapy_selenium import SeleniumRequest
+
 load_dotenv()
 
 Base = declarative_base()
@@ -31,6 +33,18 @@ class Url(Base):
 
 class TycoonSpider(scrapy.Spider):
     name = "TycoonSpider"
+
+    # custom_settings = {
+    #     "TWISTED_REACTOR": "twisted.internet.asyncioreactor.AsyncioSelectorReactor",
+    #     'CONCURRENT_REQUESTS': 1,
+    #     'DOWNLOAD_DELAY': 3,
+    #     'COOKIES_ENABLED': False,
+    #     'PLAYWRIGHT_BROWSER_TYPE': 'chromium',
+    #     "DOWNLOAD_HANDLERS": {
+    #         "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    #         "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    #     }
+    # }
 
     def __init__(self, url):
         self.start_urls = [url]
@@ -78,9 +92,17 @@ class TycoonSpider(scrapy.Spider):
                 )
                 break
 
-            yield scrapy.Request(
-                url=url, callback=self.parse, errback=self.error_handler, meta={"playwright": True}
-            )
+            print("Start Request", url)
+             
+            yield SeleniumRequest(url=url, callback=self.parse)
+            # try:
+            #     yield scrapy.Request(
+            #         url=url, callback=self.parse, errback=self.error_handler, 
+            #         meta={"playwright": True,
+            #         "playwright_include_page": True}
+            #     )
+            # except:
+            #     logging.error("Error during Scrape Request", exc_info=full_exc_info())
 
     def parse(self, response):
         print("Start Parse")
@@ -111,9 +133,12 @@ class TycoonSpider(scrapy.Spider):
             if absolute_url not in self.visited_urls:
                 print("Run Req", absolute_url)
                 self.visited_urls.add(absolute_url) # Avoid re-scrape now that we're running request for this link
-                yield scrapy.Request(
-                    url=absolute_url, callback=self.parse, errback=self.error_handler, meta={"playwright": True}
-                )
+                yield SeleniumRequest(url=absolute_url, callback=self.parse)
+                # yield scrapy.Request(
+                #     url=absolute_url, callback=self.parse, errback=self.error_handler, 
+                #     meta={"playwright": True,
+                #     "playwright_include_page": True}
+                # )
 
     def extract_data(self, response):
         # Extracting data from the page
