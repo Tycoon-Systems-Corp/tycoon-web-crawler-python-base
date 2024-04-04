@@ -16,7 +16,7 @@ This Scraper will only work on Linux/MacOS since it uses Playwright so if you wo
     or
     source ./scraper/bin/activate
 
-- Install all Requirements
+- Install all Requirements. If you have permissions problems try adding "--user" as arguement
 pip install -r requirements.txt
 
 - copy and create .env file from .env.example and set creds value
@@ -31,8 +31,11 @@ playwright install
 
 ## Execution
 ```
-
-scrapy crawl TycoonSpider -a url=https://www.fashionnova.com
-
+cd tycoon_crawler/tycoon_crawler/spiders
+python tycoon_spider.py https://www.ikea.com
 ```
 
+# Quick start
+source ./scraper/Scripts/activate
+cd tycoon_crawler/tycoon_crawler/spiders
+python tycoon_spider.py https://midnightstudios.live/products/midnight-x-needles-track-jacket-blue

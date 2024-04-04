@@ -12,6 +12,8 @@ from sqlalchemy.orm import sessionmaker
 from scrapy.crawler import CrawlerProcess
 from scrapy import Spider, Request
 
+import product_tools
+
 load_dotenv()
 
 Base = declarative_base()
@@ -156,6 +158,11 @@ class TycoonSpider(Spider):
             meta_tags = {}
             og_tags = {}
 
+            product_likely = product_tools.detect_product_likely(page)
+            print(f"Is Product?", product_likely)
+            # if product_likely.likelihood > 51:
+
+
             for tag in page.query_selector_all("meta"):
                 property_ = tag.get_attribute("property")
                 content = tag.get_attribute("content")
@@ -169,7 +176,7 @@ class TycoonSpider(Spider):
 
             # Print output for debugging
             if os.getenv('LOG_OUTPUT') == 'True':
-                with open('../../../output.txt', 'a') as f:
+                with open('../../../output.txt', 'a', encoding="utf-8") as f:
                     f.write(page.content())
 
             # Close the browser
@@ -181,7 +188,7 @@ class TycoonSpider(Spider):
                 "paragraphs": paragraphs_text,
                 "headings": headings_text,
                 "meta_tags": meta_tags,
-                "og_tags": og_tags,
+                "og_tags": og_tags
                 # Add more fields as needed
             }
 
