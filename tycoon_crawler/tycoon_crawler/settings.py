@@ -52,6 +52,7 @@ ROBOTSTXT_OBEY = True
 # COOKIES_ENABLED = False
 
 # Disable Telnet Console (enabled by default)
+# To empower parallelism we must disable telenet as it will bind same port to multiple processes
 # TELNETCONSOLE_ENABLED = False
 
 # Override the default request headers:
