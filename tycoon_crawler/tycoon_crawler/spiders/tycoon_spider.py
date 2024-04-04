@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-from sqlalchemy import create_engine, Column, String, DateTime, JSON, func
+from sqlalchemy import create_engine, Column, String, DateTime, JSON, ARRAY, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from scrapy.crawler import CrawlerProcess
@@ -27,6 +27,7 @@ class Url(Base):
     lastScrape = Column(DateTime(timezone=True), default=datetime.now)
     product = Column(JSON)
     price = Column(JSON)
+    images = Column(ARRAY(JSON))
     meta = Column(JSON)
 
 
@@ -81,7 +82,10 @@ class TycoonSpider(Spider):
                 "lastScrape": datetime.now(),
             }
             if extracted_data is not None:
-                new_url_kwargs["meta"] = extracted_data
+                new_url_kwargs["meta"] = extracted_data["meta"]
+                new_url_kwargs["product"] = extracted_data["product"]
+                new_url_kwargs["images"] = extracted_data["images"]
+                new_url_kwargs["price"] = extracted_data["price"]
             new_url = Url(**new_url_kwargs)
             self.session.add(new_url)
             self.session.commit()
@@ -93,7 +97,10 @@ class TycoonSpider(Spider):
         # Update meta for a given URL in the database
         urlRec = self.session.query(Url).filter(Url.raw == url).first()
         if urlRec:
-            urlRec.meta = extracted_data
+            urlRec.meta = extracted_data['meta']
+            urlRec.product = extracted_data['product']
+            urlRec.images = extracted_data['images']
+            urlRec.price = extracted_data['price']
             self.session.commit()
         else:
             self.insert_url(url, extracted_data)
@@ -109,7 +116,6 @@ class TycoonSpider(Spider):
         # Extract data from the current page using Playwright
         extracted_data = self.extract_data_with_playwright(response)
 
-        print("Update Meta")
         # Insert the entire response into the database
         self.update_meta(response.url, extracted_data)
 
@@ -154,25 +160,15 @@ class TycoonSpider(Spider):
             paragraphs_text = [p.text_content() for p in paragraphs]
             headings_text = [h.text_content() for h in headings]
 
-            # Extracting meta tags
-            meta_tags = {}
-            og_tags = {}
-
             product_likely = product_tools.detect_product_likely(page)
             print(f"Is Product?", product_likely)
-            # if product_likely.likelihood > 51:
-
-
-            for tag in page.query_selector_all("meta"):
-                property_ = tag.get_attribute("property")
-                content = tag.get_attribute("content")
-                if property_ and re.match(
-                    r"^((product)s?)\b", property_, re.IGNORECASE
-                ):
-                    if property_.startswith("og:"):
-                        og_tags[property_[3:]] = content
-                    elif property_.startswith("product:"):
-                        meta_tags[property_[8:]] = content
+            product_data = {
+                "product": {},
+                "price": {},
+                "images": []
+            }
+            if product_likely.get('likelihood') and product_likely["likelihood"] > 51:
+                product_data = product_tools.get_product_data(page, product_likely)
 
             # Print output for debugging
             if os.getenv('LOG_OUTPUT') == 'True':
@@ -183,12 +179,15 @@ class TycoonSpider(Spider):
             browser.close()
 
             return {
-                "title": title,
-                "url": response.url,
-                "paragraphs": paragraphs_text,
-                "headings": headings_text,
-                "meta_tags": meta_tags,
-                "og_tags": og_tags
+                "meta": {
+                    "title": title,
+                    "url": response.url,
+                    "paragraphs": paragraphs_text,
+                    "headings": headings_text,
+                },
+                "product": product_data["product"],
+                "price": product_data["price"],
+                "images": product_data["images"]
                 # Add more fields as needed
             }
 
