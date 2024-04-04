@@ -71,6 +71,8 @@ def get_product_data(page, product_likely):
                 object_info["price"] = get_price(page, 'og')
                 print(object_info)
                 return object_info
+            # TODO: We know that if product likely type is og that we should look for og data but if data is missing we should still look for application/ld+json data
+            # We can map through all data if the object_info of current value is None or null
             elif product_likely["type"] == 'application/ld+json':
                 print('application/ld+json')
                 for tag in page.query_selector_all("script"): 
