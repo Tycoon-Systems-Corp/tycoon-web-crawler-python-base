@@ -126,7 +126,7 @@ class TycoonSpider(Spider):
                 self.told_client_found_product = True
                 try:
                     message.send_message(
-                        topic="Scrape Results Client",
+                        topic="Scraper: Results Client",
                         content=json.dumps({
                             "id": safe_id
                         }),
@@ -248,7 +248,7 @@ class MessageServicer(scraper_pb2_grpc.MessageServicer):
         if request.content is not None:
             try:
                 content = json.loads(request.content)
-                if request.topic is not None and request.topic == 'New URL':
+                if request.topic is not None and request.topic == 'Scraper: New URL':
                     if content is not None and content.get('url'):
                         url_to_scrape = content['url']
                         if not url_to_scrape.startswith(("http://", "https://")):
@@ -256,6 +256,15 @@ class MessageServicer(scraper_pb2_grpc.MessageServicer):
                         print('Scraping', url_to_scrape)
                         pool = ThreadPool(processes=5)
                         pool.apply_async(run_crawl, args=(url_to_scrape, request.sender,))
+                        return scraper_pb2.Response(
+                            topic="Scraper: Begin Scrape Response",
+                            success=True,
+                            content=json.dumps({
+                                "message": "Beginning scrape",
+                                "url": url_to_scrape
+                            }),
+                            time=str(datetime.now()),
+                        )
             except Exception as e:
                 print(f"Will not scrape. Error parsing", e)
         
