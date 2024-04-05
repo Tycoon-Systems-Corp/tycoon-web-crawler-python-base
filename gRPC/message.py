@@ -4,6 +4,7 @@ import scraper_pb2_grpc
 import os
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 
@@ -18,9 +19,9 @@ def send_message(topic, content, sender, time, match):
         topic=topic, content=content, sender=sender, time=time, match=match
     )
     # Call method to send
-    response = stub.Send(request)
+    stub.Send(request, timeout=5) # Add timeout such that no response is required
 
-    print("Message Sent", response.success)
+    print("Message Sent")
 
 
 # Example Send. Uncomment if you have configured ROUTING_SERVER as env variable connecting to Routing Server
