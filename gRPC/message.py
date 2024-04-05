@@ -17,7 +17,6 @@ def send_message(topic, content, sender, time, match):
     request = scraper_pb2.Request(
         topic=topic, content=content, sender=sender, time=time, match=match
     )
-
     # Call method to send
     response = stub.Send(request)
 

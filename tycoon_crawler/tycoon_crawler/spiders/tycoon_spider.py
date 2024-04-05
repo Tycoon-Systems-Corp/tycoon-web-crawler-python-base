@@ -12,6 +12,15 @@ from sqlalchemy.orm import sessionmaker
 from scrapy.crawler import CrawlerProcess
 from scrapy import Spider, Request
 
+from multiprocessing.pool import ThreadPool
+sys.path.append('../../../gRPC')
+import grpc
+from concurrent import futures
+import scraper_pb2
+import scraper_pb2_grpc
+import message
+import json
+
 import product_tools
 
 load_dotenv()
@@ -51,7 +60,9 @@ class TycoonSpider(Spider):
     def __init__(self, *args, **kwargs):
         super(TycoonSpider, self).__init__(*args, **kwargs)
         self.start_urls = [kwargs.get("url")]
+        self.user = kwargs.get("user")
         self.visited_urls = set()
+        self.told_client_found_product = False
         # Initialize database connection
         DATABASE_URL = os.getenv("DATABASE_URL")
         self.engine = create_engine(DATABASE_URL)
@@ -96,14 +107,35 @@ class TycoonSpider(Spider):
     def update_meta(self, url, extracted_data):
         # Update meta for a given URL in the database
         urlRec = self.session.query(Url).filter(Url.raw == url).first()
+        id = ""
         if urlRec:
+            id = urlRec.id
             urlRec.meta = extracted_data['meta']
             urlRec.product = extracted_data['product']
             urlRec.images = extracted_data['images']
             urlRec.price = extracted_data['price']
             self.session.commit()
         else:
-            self.insert_url(url, extracted_data)
+            inserted = self.insert_url(url, extracted_data)
+            if inserted:
+                id = self.session.query(Url).filter(Url.raw == url).first().id
+        safe_id = str(id)
+        if self.told_client_found_product == False and extracted_data.get('product') and extracted_data.get('images') and isinstance(extracted_data['images'], list) and len(extracted_data['images']) > 0:
+            product = extracted_data['product']
+            if product.get('title'):
+                self.told_client_found_product = True
+                try:
+                    message.send_message(
+                        topic="Scrape Results Client",
+                        content=json.dumps({
+                            "id": safe_id
+                        }),
+                        sender=self.user,
+                        time=str(datetime.now()),
+                        match=self.user
+                    )
+                except Exception as e:
+                    print(f"Error Sending Update", e)
 
     def parse(self, response):
         print("Start Parse")
@@ -203,18 +235,65 @@ class TycoonSpider(Spider):
         # Add more conditions as needed
         return False
 
+# Define the service by subclassing the generated service class
+class MessageServicer(scraper_pb2_grpc.MessageServicer):
+    def Send(self, request, context):
+        # Handle incoming message request
+        print("Received message:")
+        print("Topic:", request.topic)
+        print("Content:", request.content)
+        print("Sender:", request.sender)
+        print("Time:", request.time)
+        print("Match:", request.match)
+        if request.content is not None:
+            try:
+                content = json.loads(request.content)
+                if request.topic is not None and request.topic == 'New URL':
+                    if content is not None and content.get('url'):
+                        url_to_scrape = content['url']
+                        if not url_to_scrape.startswith(("http://", "https://")):
+                            url_to_scrape = "http://" + url_to_scrape
+                        print('Scraping', url_to_scrape)
+                        pool = ThreadPool(processes=5)
+                        pool.apply_async(run_crawl, args=(url_to_scrape, request.sender,))
+            except Exception as e:
+                print(f"Will not scrape. Error parsing", e)
+        
+        # Respond to the client
+        return scraper_pb2.Response(success=True)
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python script.py <url>")
-        sys.exit(1)
-
-    url_to_scrape = sys.argv[1]
-
+def run_crawl(url_to_scrape, user):
     process = CrawlerProcess(
         settings={
             "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36",
         }
     )
-    process.crawl(TycoonSpider, url=url_to_scrape)
+    process.crawl(TycoonSpider, url=url_to_scrape, user=user)
     process.start()
+
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        print("Usage: python script.py <url>")
+        sys.exit(1)
+
+    print("Args Length", len(sys.argv))
+
+    if len(sys.argv) >= 2 and sys.argv[2] == '--server':
+        print("Starting Server")
+        # Create a gRPC server
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+
+        # Add the service to the server
+        scraper_pb2_grpc.add_MessageServicer_to_server(MessageServicer(), server)
+
+        grpc_scraper_server = os.getenv('GRPC3')
+        # Start the server on the specified port
+        server.add_insecure_port('127.0.0.1:' + grpc_scraper_server)
+        server.start()
+        print("gRPC server started. Listening on " + grpc_scraper_server + '...')
+    
+        # Keep the server running indefinitely
+        server.wait_for_termination()
+    else:
+        url_to_scrape = sys.argv[1]
+        run_crawl(url_to_scrape)
