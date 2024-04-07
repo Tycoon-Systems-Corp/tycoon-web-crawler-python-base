@@ -26,6 +26,8 @@ import product_tools
 load_dotenv()
 
 Base = declarative_base()
+pool = ThreadPool(processes=5)
+active_tasks = {}
 
 
 class Url(Base):
@@ -53,13 +55,15 @@ class TycoonSpider(Spider):
     custom_settings = {
         "DOWNLOADER_MIDDLEWARES": {
             "scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware": 110,
-            "__main__.ProxyMiddleware": 100,
-        }
+            "__main__.ProxyMiddleware": 100
+        },
+        "TELNETCONSOLE_ENABLED": False
     }
 
     def __init__(self, *args, **kwargs):
         super(TycoonSpider, self).__init__(*args, **kwargs)
         url = kwargs.get("url")
+        self.url = url
         self.start_urls = [url]
         domain = self.get_domain(url)
         if domain is not None:
@@ -258,6 +262,13 @@ class TycoonSpider(Spider):
     def closed(self, reason):
         print(self.visited_urls)
         print(f"Spider Closed", reason, self.domain, "Last URL", self.user)
+        print("Awaiting new URL's")
+        for url, task in active_tasks.items():
+            if url == self.url:
+                print("Task", url, self.url, task)
+                print("Attempt Terminate")
+                task.terminate()
+
 
 # Define the service by subclassing the generated service class
 class MessageServicer(scraper_pb2_grpc.MessageServicer):
@@ -281,8 +292,8 @@ class MessageServicer(scraper_pb2_grpc.MessageServicer):
                         if content.get('dborigin'):
                             dborigin = content['dborigin']
                         print('Scraping', url_to_scrape, content['dborigin'])
-                        pool = ThreadPool(processes=5)
-                        pool.apply_async(run_crawl, args=(url_to_scrape, request.sender, dborigin))
+                        task = pool.apply_async(run_crawl, args=(url_to_scrape, request.sender, dborigin))
+                        active_tasks[url_to_scrape] = task
                         print('Send response back')
                         return scraper_pb2.Response(
                             topic="Scraper: Begin Scrape Response",
