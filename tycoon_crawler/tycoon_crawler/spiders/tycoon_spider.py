@@ -59,10 +59,15 @@ class TycoonSpider(Spider):
 
     def __init__(self, *args, **kwargs):
         super(TycoonSpider, self).__init__(*args, **kwargs)
-        self.start_urls = [kwargs.get("url")]
+        url = kwargs.get("url")
+        self.start_urls = [url]
+        domain = self.get_domain(url)
+        if domain is not None:
+            self.domain = domain
         self.user = kwargs.get("user")
         self.visited_urls = set()
         self.told_client_found_product = False
+        self.dborigin = kwargs.get("dborigin")
         # Initialize database connection
         DATABASE_URL = os.getenv("DATABASE_URL")
         self.engine = create_engine(DATABASE_URL)
@@ -83,10 +88,8 @@ class TycoonSpider(Spider):
 
     def insert_url(self, url, extracted_data=None):
         # Insert a new URL into the database
-        pattern = r"(?::\/\/)?([a-zA-Z0-9.-]+?)(?:\/|$)"
-        match = re.search(pattern, url, re.IGNORECASE)
-        if match:
-            use_domain = match.group(1)
+        use_domain = self.domain
+        if use_domain:
             new_url_kwargs = {
                 "domain": use_domain,
                 "raw": url,
@@ -104,7 +107,19 @@ class TycoonSpider(Spider):
         else:
             return False
 
-    def update_meta(self, url, extracted_data):
+    def get_domain(self, url):
+        pattern = r"(?::\/\/)?([a-zA-Z0-9.-]+?)(?:\/|$)"
+        match = re.search(pattern, url, re.IGNORECASE)
+        if match:
+            use_domain = match.group(1)
+            www_pattern = r"(www)([a-zA-Z0-9.-]+?)(?:\/|$)"
+            match_www = re.search(www_pattern, use_domain, re.IGNORECASE)
+            if not match_www: # If missing www at start after protocol is removed, make sure to add
+                use_domain = "www." + use_domain
+            return use_domain
+        return None
+
+    async def update_meta(self, url, extracted_data):
         # Update meta for a given URL in the database
         urlRec = self.session.query(Url).filter(Url.raw == url).first()
         id = ""
@@ -122,13 +137,15 @@ class TycoonSpider(Spider):
         safe_id = str(id)
         if self.told_client_found_product == False and extracted_data.get('product') and extracted_data.get('images') and isinstance(extracted_data['images'], list) and len(extracted_data['images']) > 0:
             product = extracted_data['product']
-            if product.get('title'):
+            print("Attempt send back Results Client", self.dborigin is not None, self.dborigin)
+            if product.get('title') and self.dborigin is not None and self.dborigin != "":
                 self.told_client_found_product = True
                 try:
                     message.send_message(
                         topic="Scraper: Results Client",
                         content=json.dumps({
-                            "id": safe_id
+                            "id": safe_id,
+                            "dborigin": self.dborigin
                         }),
                         sender=self.user,
                         time=str(datetime.now()),
@@ -137,7 +154,7 @@ class TycoonSpider(Spider):
                 except Exception as e:
                     print(f"Error Sending Update", e)
 
-    def parse(self, response):
+    async def parse(self, response):
         print("Start Parse")
         # Check if the page is a log-in or authentication page
         if self.is_login_page(response):
@@ -149,7 +166,7 @@ class TycoonSpider(Spider):
         extracted_data = self.extract_data_with_playwright(response)
 
         # Insert the entire response into the database
-        self.update_meta(response.url, extracted_data)
+        await self.update_meta(response.url, extracted_data)
 
         print("Adding Url", response.url)
         self.visited_urls.add(response.url)
@@ -167,12 +184,15 @@ class TycoonSpider(Spider):
                 self.visited_urls.add(
                     absolute_url
                 )  # Avoid re-scrape now that we're running request for this link
-                yield Request(
-                    url=absolute_url,
-                    callback=self.parse,
-                    errback=self.error_handler,
-                    meta={"playwright": True},
-                )
+                new_domain_scrape = self.get_domain(absolute_url)
+                print("Next Domain", new_domain_scrape, "Self Domain", self.domain)
+                if new_domain_scrape == self.domain:
+                    yield Request(
+                        url=absolute_url,
+                        callback=self.parse,
+                        errback=self.error_handler,
+                        meta={"playwright": True},
+                    )
 
     def extract_data_with_playwright(self, response):
         # Import Playwright inside the method to avoid issues with asynchronous execution
@@ -235,6 +255,10 @@ class TycoonSpider(Spider):
         # Add more conditions as needed
         return False
 
+    def closed(self, reason):
+        print(self.visited_urls)
+        print(f"Spider Closed", reason, self.domain, "Last URL", self.user)
+
 # Define the service by subclassing the generated service class
 class MessageServicer(scraper_pb2_grpc.MessageServicer):
     def Send(self, request, context):
@@ -253,9 +277,13 @@ class MessageServicer(scraper_pb2_grpc.MessageServicer):
                         url_to_scrape = content['url']
                         if not url_to_scrape.startswith(("http://", "https://")):
                             url_to_scrape = "http://" + url_to_scrape
-                        print('Scraping', url_to_scrape)
+                        dborigin = ''
+                        if content.get('dborigin'):
+                            dborigin = content['dborigin']
+                        print('Scraping', url_to_scrape, content['dborigin'])
                         pool = ThreadPool(processes=5)
-                        pool.apply_async(run_crawl, args=(url_to_scrape, request.sender,))
+                        pool.apply_async(run_crawl, args=(url_to_scrape, request.sender, dborigin))
+                        print('Send response back')
                         return scraper_pb2.Response(
                             topic="Scraper: Begin Scrape Response",
                             success=True,
@@ -271,13 +299,13 @@ class MessageServicer(scraper_pb2_grpc.MessageServicer):
         # Respond to the client
         return scraper_pb2.Response(success=True)
 
-def run_crawl(url_to_scrape, user):
+def run_crawl(url_to_scrape, user, dborigin):
     process = CrawlerProcess(
         settings={
             "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36",
         }
     )
-    process.crawl(TycoonSpider, url=url_to_scrape, user=user)
+    process.crawl(TycoonSpider, url=url_to_scrape, user=user, dborigin=dborigin)
     process.start()
 
 if __name__ == "__main__":
