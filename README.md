@@ -24,9 +24,14 @@ pip install -r requirements.txt
 - Install playwright dependencies while virtual env activated
 playwright install
 
+# gRPC Server
+source ./scraper/Scripts/activate
+cd tycoon_crawler/tycoon_crawler/spiders
+python tycoon_spider.py ignore --server
 
 ## TODO:
-- Extract products and price
+- Ensure server can queue many urls
+- Parallelism
 
 
 ## Execution
@@ -39,3 +44,4 @@ python tycoon_spider.py https://www.ikea.com
 source ./scraper/Scripts/activate
 cd tycoon_crawler/tycoon_crawler/spiders
 python tycoon_spider.py https://midnightstudios.live/products/midnight-x-needles-track-jacket-blue
+
