@@ -142,3 +142,10 @@ PROXY_PORT = os.getenv("PROXY_PORT")  ## Port of the endpoint you are using.
 
 # Disable SSL certificate verification
 ssl._create_default_https_context = ssl._create_unverified_context
+
+# Attempt fix Telnet Console Listening hang stuck playwright
+import asyncio
+from scrapy.utils.reactor import install_reactor
+
+install_reactor('twisted.internet.asyncioreactor.AsyncioSelectorReactor')
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
