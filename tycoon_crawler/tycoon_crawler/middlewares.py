@@ -37,6 +37,7 @@ class TycoonCrawlerSpiderMiddleware:
             yield i
 
     def process_spider_exception(self, response, exception, spider):
+        spider.logger.info("Spider Exception: %s" % (spider.name, exception))
         # Called when a spider or process_spider_input() method
         # (from other spider middleware) raises an exception.
 
@@ -44,6 +45,7 @@ class TycoonCrawlerSpiderMiddleware:
         pass
 
     def process_start_requests(self, start_requests, spider):
+        spider.logger.info("Spider Start Requests: %s" % (spider.name, start_requests))
         # Called with the start requests of the spider, and works
         # similarly to the process_spider_output() method, except
         # that it doesn’t have a response associated.

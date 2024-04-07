@@ -18,6 +18,18 @@ BOT_NAME = "tycoon_crawler"
 SPIDER_MODULES = ["tycoon_crawler.spiders"]
 NEWSPIDER_MODULE = "tycoon_crawler.spiders"
 
+# Support for: Scrapy Playwright
+DOWNLOAD_HANDLERS = {
+    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+}
+
+# Supports Playwright
+TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
+
+# Playwright Browser
+PLAYWRIGHT_BROWSER_TYPE = "chromium"
+
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 # USER_AGENT = "tycoon_crawler (+http://www.yourdomain.com)"
@@ -40,6 +52,7 @@ ROBOTSTXT_OBEY = True
 # COOKIES_ENABLED = False
 
 # Disable Telnet Console (enabled by default)
+# To empower parallelism we must disable telenet as it will bind same port to multiple processes
 # TELNETCONSOLE_ENABLED = False
 
 # Override the default request headers:
