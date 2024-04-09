@@ -26,7 +26,6 @@ import product_tools
 load_dotenv()
 
 Base = declarative_base()
-pool = ThreadPool(processes=5)
 active_tasks = {}
 
 
@@ -276,8 +275,12 @@ class TycoonSpider(Spider):
                 task = active_tasks[self.url]
                 print("Task", self.url, task)
                 print("Attempt Terminate")
-                task.terminate()
                 del active_tasks[self.url]
+            
+            if hasattr(self, 'session'):
+                    self.session.close()  # Close database session if it exists
+            # Call the parent class's closed method to ensure any cleanup defined there is executed
+            super().closed(reason)
         except Exception as e:
             print("Exception", str(e))
 
@@ -305,8 +308,14 @@ class MessageServicer(scraper_pb2_grpc.MessageServicer):
                         if content.get('dborigin'):
                             dborigin = content['dborigin']
                         print('Scraping', url_to_scrape, content['dborigin'])
+                        pool = ThreadPool(processes=300)
                         task = pool.apply_async(run_crawl, args=(url_to_scrape, request.sender, dborigin))
                         active_tasks[url_to_scrape] = task
+                        # Close the pool for new tasks
+                        pool.close()
+                        # Wait for all tasks to complete
+                        pool.join()
+
                         print('Send response back')
                         return scraper_pb2.Response(
                             topic="Scraper: Begin Scrape Response",
@@ -348,8 +357,9 @@ if __name__ == "__main__":
         scraper_pb2_grpc.add_MessageServicer_to_server(MessageServicer(), server)
 
         grpc_scraper_server = os.getenv('GRPC3')
+        loopback = os.getenv('LOOPBACK')
         # Start the server on the specified port
-        server.add_insecure_port('127.0.0.1:' + grpc_scraper_server)
+        server.add_insecure_port(loopback + ':' + grpc_scraper_server)
         server.start()
         print("gRPC server started. Listening on " + grpc_scraper_server + '...')
     
