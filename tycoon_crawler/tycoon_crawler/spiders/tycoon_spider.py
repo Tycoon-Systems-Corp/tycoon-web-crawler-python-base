@@ -161,6 +161,7 @@ class TycoonSpider(Spider):
                     print(f"Error Sending Update", e)
 
     async def parse(self, response):
+        print('url:', response.url)
         print("Start Parse")
         # Check if the page is a log-in or authentication page
         if self.is_login_page(response):
@@ -181,10 +182,10 @@ class TycoonSpider(Spider):
 
         print("View Response", response)
         
-        print("Extract Links")
+        print("Extract Links", )
         # Extracting links to other pages
         for link in response.css("a::attr(href)").getall():
-            if os.getenv('QUICK_CRAWL_TEST') == 'True' and len(self.visited_urls) > 5:
+            if os.getenv('QUICK_CRAWL_TEST') == 'True' and len(self.visited_urls) > 4:
                 print("QUICK CRAWL TEST: Ending Crawl", len(self.visited_urls))
                 return
             absolute_url = response.urljoin(link)
@@ -271,10 +272,15 @@ class TycoonSpider(Spider):
             print(self.visited_urls)
             print(f"Spider Closed", reason, self.domain, "Last URL", self.user)
             print("Awaiting new URL's")
+            found = False
             for self.url in active_tasks:
                 task = active_tasks[self.url]
+                found = True
                 print("Task", self.url, task)
                 print("Attempt Terminate")
+            
+            
+            if found == True:
                 del active_tasks[self.url]
             
             if hasattr(self, 'session'):
@@ -338,8 +344,11 @@ def run_crawl(url_to_scrape, user, dborigin):
             "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36",
         }
     )
+    print("Initiate Crawl")
     process.crawl(TycoonSpider, url=url_to_scrape, user=user, dborigin=dborigin)
+    print("Attempt Process Start")
     process.start()
+    print("Crawl Started", url_to_scrape)
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
