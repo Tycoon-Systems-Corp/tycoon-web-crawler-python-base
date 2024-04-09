@@ -73,12 +73,15 @@ class TycoonSpider(Spider):
         self.told_client_found_product = False
         self.dborigin = kwargs.get("dborigin")
         # Initialize database connection
+        print("Instantiate Db Connection")
         DATABASE_URL = os.getenv("DATABASE_URL")
         self.engine = create_engine(DATABASE_URL)
 
+        print("Build Session")
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
+        print("Spider Created, running!", self.url, self.session)
 
     def check_url_exists(self, url):
         # Calculate date representing 3 months ago
@@ -165,10 +168,11 @@ class TycoonSpider(Spider):
             self.logger.info(f"Ignoring log-in page: {response.url}")
             return
 
-        print("Extracting")
+        print("Extracting. Urls Visited Length", len(self.visited_urls))
         # Extract data from the current page using Playwright
         extracted_data = self.extract_data_with_playwright(response)
 
+        print("Fetch Meta")
         # Insert the entire response into the database
         await self.update_meta(response.url, extracted_data)
 
@@ -177,9 +181,13 @@ class TycoonSpider(Spider):
         yield extracted_data
 
         print("View Response", response)
-
+        
+        print("Extract Links")
         # Extracting links to other pages
         for link in response.css("a::attr(href)").getall():
+            if os.getenv('QUICK_CRAWL_TEST') == 'True' and len(self.visited_urls) > 5:
+                print("QUICK CRAWL TEST: Ending Crawl", len(self.visited_urls))
+                return
             absolute_url = response.urljoin(link)
             if absolute_url.startswith("javascript:"):
                 continue  # Ignore JavaScript links
@@ -260,14 +268,18 @@ class TycoonSpider(Spider):
         return False
 
     def closed(self, reason):
-        print(self.visited_urls)
-        print(f"Spider Closed", reason, self.domain, "Last URL", self.user)
-        print("Awaiting new URL's")
-        for url, task in active_tasks.items():
-            if url == self.url:
-                print("Task", url, self.url, task)
+        try:
+            print(self.visited_urls)
+            print(f"Spider Closed", reason, self.domain, "Last URL", self.user)
+            print("Awaiting new URL's")
+            for self.url in active_tasks:
+                task = active_tasks[self.url]
+                print("Task", self.url, task)
                 print("Attempt Terminate")
                 task.terminate()
+                del active_tasks[self.url]
+        except Exception as e:
+            print("Exception", str(e))
 
 
 # Define the service by subclassing the generated service class
@@ -282,6 +294,7 @@ class MessageServicer(scraper_pb2_grpc.MessageServicer):
         print("Match:", request.match)
         if request.content is not None:
             try:
+                print("Content", request.content)
                 content = json.loads(request.content)
                 if request.topic is not None and request.topic == 'Scraper: New URL':
                     if content is not None and content.get('url'):
