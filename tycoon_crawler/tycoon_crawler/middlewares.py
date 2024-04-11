@@ -30,6 +30,7 @@ class TycoonCrawlerSpiderMiddleware:
         return None
 
     def process_spider_output(self, response, result, spider):
+        print("Spider output", spider.name, result)
         # Called with the results returned from the Spider, after
         # it has processed the response.
 

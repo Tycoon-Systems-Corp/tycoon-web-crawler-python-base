@@ -4,6 +4,7 @@ import re
 import uuid
 
 from datetime import datetime, timedelta
+import asyncio
 from dotenv import load_dotenv
 
 from sqlalchemy import create_engine, Column, String, DateTime, JSON, ARRAY, func
@@ -43,9 +44,11 @@ class Url(Base):
 
 class ProxyMiddleware(object):
     def process_request(self, request, spider):
+        print("Process Request", request, spider.name)
         # Replace 'PROXY_ENDPOINT' and 'PROXY_PORT' with your actual proxy details
         proxy_url = f"http://{os.getenv('PROXY_USER')}:{os.getenv('PROXY_PASSWORD')}@{os.getenv('PROXY_ENDPOINT')}:{os.getenv('PROXY_PORT')}"
         request.meta["proxy"] = proxy_url
+        print("Proxy Set", proxy_url)
 
 
 class TycoonSpider(Spider):
@@ -56,7 +59,15 @@ class TycoonSpider(Spider):
             "scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware": 110,
             "__main__.ProxyMiddleware": 100
         },
-        "TELNETCONSOLE_ENABLED": False
+        "TELNETCONSOLE_ENABLED": False,
+        "STATS_ENABLED": True,
+        "LOG_LEVEL": "DEBUG",
+        'CONCURRENT_REQUESTS': 32,
+        "CONCURRENT_REQUESTS_PER_IP": 32,
+        "MEMDEBUG_ENABLED": True,
+        "MEMDEBUG_NOTIFY": [ 'admin@tycoon.systems' ],
+        "MEMUSAGE_NOTIFY_MAIL": [ 'admin@tycoon.systems' ],
+        "REACTOR_THREADPOOL_MAXSIZE": 32
     }
 
     def __init__(self, *args, **kwargs):
@@ -81,6 +92,8 @@ class TycoonSpider(Spider):
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
         print("Spider Created, running!", self.url, self.session)
+        found = self.session.query(Url).filter(Url.raw == url).first()
+        print("Url Exists", found)
 
     def check_url_exists(self, url):
         # Calculate date representing 3 months ago
@@ -240,7 +253,9 @@ class TycoonSpider(Spider):
                     f.write(page.content())
 
             # Close the browser
-            browser.close()
+
+            if browser and hasattr(browser, 'close'):
+                browser.close()
 
             return {
                 "meta": {
@@ -285,8 +300,6 @@ class TycoonSpider(Spider):
             
             if hasattr(self, 'session'):
                     self.session.close()  # Close database session if it exists
-            # Call the parent class's closed method to ensure any cleanup defined there is executed
-            super().closed(reason)
         except Exception as e:
             print("Exception", str(e))
 
@@ -314,24 +327,27 @@ class MessageServicer(scraper_pb2_grpc.MessageServicer):
                         if content.get('dborigin'):
                             dborigin = content['dborigin']
                         print('Scraping', url_to_scrape, content['dborigin'])
-                        pool = ThreadPool(processes=300)
+                        # force_stop_chromium()
+
+                        # TODO: Pass into Celery queue
+                        # TODO: For each Celery queue job of "crawl_website" fork into new Python process "python tycoon_spider.py *url*" such that gRPC listening server is separate from Scraper job processes
+                        pool = ThreadPool(processes=5)
                         task = pool.apply_async(run_crawl, args=(url_to_scrape, request.sender, dborigin))
                         active_tasks[url_to_scrape] = task
-                        # Close the pool for new tasks
-                        pool.close()
-                        # Wait for all tasks to complete
-                        pool.join()
 
                         print('Send response back')
-                        return scraper_pb2.Response(
-                            topic="Scraper: Begin Scrape Response",
-                            success=True,
-                            content=json.dumps({
-                                "message": "Beginning scrape",
-                                "url": url_to_scrape
-                            }),
-                            time=str(datetime.now()),
-                        )
+                        try:
+                            return scraper_pb2.Response(
+                                topic="Scraper: Begin Scrape Response",
+                                success=True,
+                                content=json.dumps({
+                                    "message": "Beginning scrape",
+                                    "url": url_to_scrape
+                                }),
+                                time=str(datetime.now()),
+                            )
+                        except Exception as e:
+                            print(f"Error Sending Response", e)
             except Exception as e:
                 print(f"Will not scrape. Error parsing", e)
         
@@ -347,8 +363,46 @@ def run_crawl(url_to_scrape, user, dborigin):
     print("Initiate Crawl")
     process.crawl(TycoonSpider, url=url_to_scrape, user=user, dborigin=dborigin)
     print("Attempt Process Start")
-    process.start()
-    print("Crawl Started", url_to_scrape)
+    try:
+        process.start()
+    except Exception as e:
+        print(f"Failed to Start Crawl Process", str(e))
+        # Send local event to retry crawl later
+    print("Crawl Done", url_to_scrape)
+
+
+def force_stop_chromium():
+    import psutil
+
+    # Iterate over all running processes
+    for proc in psutil.process_iter():
+        try:
+            # Check if the process name contains "chromium"
+            print("Proc", proc)
+            if "chrome.exe" in proc.name().lower():
+                # Terminate the Chromium process
+                print("Match Proc", proc.name())
+                if hasattr(proc, 'terminate'):
+                    proc.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+
+def instantiate_grpc_server():
+    # Create a gRPC server
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+
+    # Add the service to the server
+    scraper_pb2_grpc.add_MessageServicer_to_server(MessageServicer(), server)
+
+    grpc_scraper_server = os.getenv('GRPC3')
+    loopback = os.getenv('LOOPBACK')
+    # Start the server on the specified port
+    server.add_insecure_port(loopback + ':' + grpc_scraper_server)
+    server.start()
+    print("gRPC server started. Listening on " + grpc_scraper_server + '...')
+
+    # Keep the server running indefinitely
+    server.wait_for_termination()
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
@@ -359,21 +413,8 @@ if __name__ == "__main__":
 
     if len(sys.argv) >= 2 and sys.argv[2] == '--server':
         print("Starting Server")
-        # Create a gRPC server
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        instantiate_grpc_server()
 
-        # Add the service to the server
-        scraper_pb2_grpc.add_MessageServicer_to_server(MessageServicer(), server)
-
-        grpc_scraper_server = os.getenv('GRPC3')
-        loopback = os.getenv('LOOPBACK')
-        # Start the server on the specified port
-        server.add_insecure_port(loopback + ':' + grpc_scraper_server)
-        server.start()
-        print("gRPC server started. Listening on " + grpc_scraper_server + '...')
-    
-        # Keep the server running indefinitely
-        server.wait_for_termination()
     else:
         url_to_scrape = sys.argv[1]
         run_crawl(url_to_scrape)

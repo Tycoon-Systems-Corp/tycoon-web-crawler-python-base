@@ -43,3 +43,4 @@ w3lib==2.1.2
 zope.interface==6.2
 grpcio==1.62.0
 grpcio-tools==1.62.0
+psutil==5.9.8

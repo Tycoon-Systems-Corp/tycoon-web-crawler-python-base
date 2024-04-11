@@ -14,6 +14,7 @@ class ProxyMiddleware(object):
         self.port = settings.get("PROXY_PORT")
 
     def process_request(self, request, spider):
+        print("Process Request", request)
 
         user_credentials = "{user}:{passw}".format(user=self.user, passw=self.password)
         basic_authentication = (
@@ -22,3 +23,4 @@ class ProxyMiddleware(object):
         host = "http://{endpoint}:{port}".format(endpoint=self.endpoint, port=self.port)
         request.meta["proxy"] = host
         request.headers["Proxy-Authorization"] = basic_authentication
+        print("Processing using Proxy")
