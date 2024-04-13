@@ -2,13 +2,14 @@ import os
 import sys
 import re
 import uuid
+import multiprocessing
 
 from datetime import datetime, timedelta
 import asyncio
 from dotenv import load_dotenv
 
 from sqlalchemy import create_engine, Column, String, DateTime, JSON, ARRAY, func
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from scrapy.crawler import CrawlerProcess
 from scrapy import Spider, Request
@@ -23,11 +24,14 @@ import message
 import json
 
 import product_tools
+from celery import Celery
 
 load_dotenv()
 
-Base = declarative_base()
+Base = declarative_base()   
 active_tasks = {}
+
+app = Celery('TycoonSpider', BROKER_URL =os.getenv("REDIS_URL"))
 
 
 class Url(Base):
@@ -332,7 +336,7 @@ class MessageServicer(scraper_pb2_grpc.MessageServicer):
                         # TODO: Pass into Celery queue
                         # TODO: For each Celery queue job of "crawl_website" fork into new Python process "python tycoon_spider.py *url*" such that gRPC listening server is separate from Scraper job processes
                         pool = ThreadPool(processes=5)
-                        task = pool.apply_async(run_crawl, args=(url_to_scrape, request.sender, dborigin))
+                        task = pool.apply_async(run_crawl_task, args=(url_to_scrape, request.sender, dborigin))
                         active_tasks[url_to_scrape] = task
 
                         print('Send response back')
@@ -354,7 +358,28 @@ class MessageServicer(scraper_pb2_grpc.MessageServicer):
         # Respond to the client
         return scraper_pb2.Response(success=True)
 
+# def run_crawl(url_to_scrape, user, dborigin):
+#     process = CrawlerProcess(
+#         settings={
+#             "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36",
+#         }
+#     )
+#     print("Initiate Crawl")
+#     process.crawl(TycoonSpider, url=url_to_scrape, user=user, dborigin=dborigin)
+#     print("Attempt Process Start")
+#     try:
+#         process.start()
+#     except Exception as e:
+#         print(f"Failed to Start Crawl Process", str(e))
+#         # Send local event to retry crawl later
+#     print("Crawl Done", url_to_scrape)
+
 def run_crawl(url_to_scrape, user, dborigin):
+    process = multiprocessing.Process(target=start_crawl, args=(url_to_scrape, user, dborigin))
+    process.start()
+    process.join()  # Wait for the process to finish
+
+def start_crawl(url_to_scrape, user, dborigin):
     process = CrawlerProcess(
         settings={
             "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36",
@@ -370,6 +395,9 @@ def run_crawl(url_to_scrape, user, dborigin):
         # Send local event to retry crawl later
     print("Crawl Done", url_to_scrape)
 
+@app.task
+def run_crawl_task(url_to_scrape, user, dborigin):
+    run_crawl(url_to_scrape, user, dborigin)
 
 def force_stop_chromium():
     import psutil
@@ -417,4 +445,4 @@ if __name__ == "__main__":
 
     else:
         url_to_scrape = sys.argv[1]
-        run_crawl(url_to_scrape)
+        run_crawl_task.delay(url_to_scrape)
