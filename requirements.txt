@@ -79,3 +79,4 @@ vine==5.1.0
 w3lib==2.1.2
 wcwidth==0.2.13
 zope.interface==6.2
+celery==5.3.6
