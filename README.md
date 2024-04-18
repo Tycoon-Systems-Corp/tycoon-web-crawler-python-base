@@ -45,3 +45,7 @@ source ./scraper/Scripts/activate
 cd tycoon_crawler/tycoon_crawler/spiders
 python tycoon_spider.py https://midnightstudios.live/products/midnight-x-needles-track-jacket-blue
 
+
+
+# start celery
+celery -A tycoon_spider worker --loglevel=info

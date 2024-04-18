@@ -22,6 +22,7 @@ class TycoonCrawlerSpiderMiddleware:
         return s
 
     def process_spider_input(self, response, spider):
+        print("Spider Input", spider.name, response)
         # Called for each response that goes through the spider
         # middleware and into the spider.
 
@@ -29,6 +30,7 @@ class TycoonCrawlerSpiderMiddleware:
         return None
 
     def process_spider_output(self, response, result, spider):
+        print("Spider output", spider.name, result)
         # Called with the results returned from the Spider, after
         # it has processed the response.
 
@@ -71,6 +73,7 @@ class TycoonCrawlerDownloaderMiddleware:
         return s
 
     def process_request(self, request, spider):
+        print("Process Request", spider.name, request)
         # Called for each request that goes through the downloader
         # middleware.
 
@@ -83,6 +86,7 @@ class TycoonCrawlerDownloaderMiddleware:
         return None
 
     def process_response(self, request, response, spider):
+        print("Process Response", spider.name, request, response)
         # Called with the response returned from the downloader.
 
         # Must either;
@@ -92,6 +96,7 @@ class TycoonCrawlerDownloaderMiddleware:
         return response
 
     def process_exception(self, request, exception, spider):
+        print("Process Exception", spider.name, exception)
         # Called when a download handler or a process_request()
         # (from other downloader middleware) raises an exception.
 

@@ -19,7 +19,7 @@ def send_message(topic, content, sender, time, match):
         topic=topic, content=content, sender=sender, time=time, match=match
     )
     # Call method to send
-    stub.Send(request, timeout=2) # Add timeout such that no response is required
+    stub.Send(request, timeout=2)  # Add timeout such that no response is required
 
     print("Message Sent")
 
