@@ -3,6 +3,9 @@ This Scraper will only work on Linux/MacOS since it uses Playwright so if you wo
 
 ## Installation
 
+- copy and create .env file from .env.example and set creds value
+cp .env.example .env
+
 - create virtual environment
     pip install virtualenv
 
@@ -18,8 +21,6 @@ This Scraper will only work on Linux/MacOS since it uses Playwright so if you wo
 
 - Install all Requirements. If you have permissions problems try adding "--user" as arguement
 pip install -r requirements.txt
-
-- copy and create .env file from .env.example and set creds value
 
 - Install playwright dependencies while virtual env activated
 playwright install

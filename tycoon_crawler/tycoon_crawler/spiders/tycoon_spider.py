@@ -181,13 +181,8 @@ class TycoonSpider(Spider):
             ):
                 self.told_client_found_product = True
                 try:
-                    message.send_message(
-                        topic="Scraper: Results Client",
-                        content=json.dumps({"id": safe_id, "dborigin": self.dborigin}),
-                        sender=self.user,
-                        time=str(datetime.now()),
-                        match=self.user,
-                    )
+                    import subprocess
+                    subprocess.run("python", "../../../gRPC/message.py", "Scraper: Results Client", json.dumps({"id": safe_id, "dborigin": self.dborigin}), sender=self.user, time=str(datetime.now()), match=self.user)
                 except Exception as e:
                     print(f"Error Sending Update", e)
 

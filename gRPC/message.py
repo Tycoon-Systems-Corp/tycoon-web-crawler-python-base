@@ -3,6 +3,7 @@ import scraper_pb2
 import scraper_pb2_grpc
 import os
 from dotenv import load_dotenv
+import sys
 
 
 load_dotenv()
@@ -23,12 +24,6 @@ def send_message(topic, content, sender, time, match):
 
     print("Message Sent")
 
-
-# Example Send. Uncomment if you have configured ROUTING_SERVER as env variable connecting to Routing Server
-# if __name__ == '__main__':
-#     topic = "scraper_updates"
-#     content = "We found Products on your Website"
-#     sender = "Scraper"
-#     time = "2024-03-01T12:00:00"
-#     match = "www.glossier.com/p/2s8k2a"
-#     send_message(topic, content, sender, time, match)
+if __name__ == '__main__':
+    topic, content, sender, time, match = sys.argv[1:]
+    send_message(topic, content, sender, time, match)
