@@ -1,0 +1,3 @@
+source ./scraper/bin/activate
+cd tycoon_crawler/tycoon_crawler/spiders
+python tycoon_spider.py ignore --server
